@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/your_database_name
+    username: your_username
+    password: your_password
+    driver-class-name: org.postgresql.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: your_google_client_id
+            client-secret: your_google_client_secret
+            scope:
+              - email
+              - profile
+
+jwt:
+  secret: your_jwt_secret_key_here_make_it_long_and_secure
+  token-validity-in-seconds: 86400 
