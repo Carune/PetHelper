@@ -1,4 +1,4 @@
-package com.pethelper.domain;
+package com.pethelper.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

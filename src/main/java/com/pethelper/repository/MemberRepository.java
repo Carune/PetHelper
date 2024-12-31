@@ -1,7 +1,9 @@
 package com.pethelper.repository;
 
-import com.pethelper.domain.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.pethelper.entity.Member;
+
 import java.util.Optional;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {

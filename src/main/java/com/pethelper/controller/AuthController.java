@@ -1,5 +1,6 @@
 package com.pethelper.controller;
 
+import com.pethelper.dto.LoginRequest;
 import com.pethelper.dto.SignUpRequest;
 import com.pethelper.service.AuthService;
 import jakarta.validation.Valid;

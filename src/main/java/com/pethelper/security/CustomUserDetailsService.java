@@ -1,6 +1,6 @@
 package com.pethelper.security;
 
-import com.pethelper.domain.Member;
+import com.pethelper.entity.Member;
 import com.pethelper.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.User;

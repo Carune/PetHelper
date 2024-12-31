@@ -1,8 +1,10 @@
 package com.pethelper.service;
 
-import com.pethelper.domain.Member;
 import com.pethelper.dto.LoginRequest;
 import com.pethelper.dto.SignUpRequest;
+import com.pethelper.entity.Member;
+import com.pethelper.repository.MemberRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
