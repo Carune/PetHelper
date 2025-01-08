@@ -45,3 +45,6 @@ logs/
 .Trashes
 ehthumbs.db
 Thumbs.db 
+
+src/main/resources/application-security.yml
+src/main/resources/application-database.yml
