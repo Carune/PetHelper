@@ -2,8 +2,8 @@ package com.pethelper.service;
 
 import com.pethelper.dto.LoginRequest;
 import com.pethelper.dto.SignUpRequest;
-import com.pethelper.entity.Member;
-import com.pethelper.repository.MemberRepository;
+import com.pethelper.entity.User;
+import com.pethelper.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,23 +22,23 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
-    private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
     
     @Override
     public ResponseEntity<?> signUp(SignUpRequest request) {
         // 이메일 중복 체크
-        if (memberRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity.badRequest().body("이미 가입된 이메일입니다.");
         }
 
-        Member member = Member.builder()
+        User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
-                .authProvider(Member.AuthProvider.LOCAL)
+                .provider(User.AuthProvider.LOCAL)
                 .build();
                 
-        memberRepository.save(member);
+        userRepository.save(user);
         return ResponseEntity.ok("회원가입이 완료되었습니다.");
     }
 
