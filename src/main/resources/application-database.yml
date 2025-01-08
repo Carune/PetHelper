@@ -1,0 +1,6 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://pethelper.co.kr:14532/pethelper
+    username: pethelper
+    password: pethelper1234!@#$
+    driver-class-name: org.postgresql.Driver 
