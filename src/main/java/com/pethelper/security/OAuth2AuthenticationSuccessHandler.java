@@ -43,34 +43,23 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         }
         // 네이버 로그인
         else if (attributes.get("response") instanceof Map) {
-            Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-            
-            // 사용자 정보
-            String email = (String) response.get("email");
-            String name = (String) response.get("name");
-            String imageUrl = (String) response.get("profile_image");
-            String providerId = (String) response.get("id");
-            
-            // User 객체 생성 또는 업데이트
-            User user = userService.findByEmail(email)
-                .map(existingUser -> {
-                    existingUser.updateOAuth2Info(AuthProvider.NAVER, providerId);
-                    return existingUser;
-                })
-                .orElseGet(() -> User.builder()
-                    .email(email)
-                    .name(name)
-                    .imageUrl(imageUrl)
-                    .provider(AuthProvider.NAVER)
-                    .providerId(providerId)
-                    .build());
-            
-            User savedUser = userService.saveUser(user);
-            log.info("Saved User: {}", savedUser);
+            handleNaverUser(attributes);
+        }
+        // 구글 로그인
+        else if (attributes.containsKey("sub")) {
+            handleGoogleUser(attributes);
         }
 
         String token = tokenService.createToken(authentication);
-        String targetUrl = frontendUrl + "/oauth2/redirect?token=" + token;
+        String provider = "";
+        if (attributes.get("kakao_account") instanceof Map) {
+            provider = "kakao";
+        } else if (attributes.get("response") instanceof Map) {
+            provider = "naver";
+        } else if (attributes.containsKey("sub")) {
+            provider = "google";
+        }
+        String targetUrl = frontendUrl + "/oauth2/redirect?token=" + token + "&provider=" + provider;
         
         clearAuthenticationAttributes(request);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
@@ -95,6 +84,54 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 .name(nickname)
                 .imageUrl(imageUrl)
                 .provider(AuthProvider.KAKAO)
+                .providerId(providerId)
+                .build());
+        
+        User savedUser = userService.saveUser(user);
+        log.info("Saved User: {}", savedUser);
+    }
+
+    private void handleNaverUser(Map<String, Object> attributes) {
+        Map<String, Object> naverResponse = (Map<String, Object>) attributes.get("response");
+        
+        String email = (String) naverResponse.get("email");
+        String name = (String) naverResponse.get("name");
+        String imageUrl = (String) naverResponse.get("profile_image");
+        String providerId = (String) naverResponse.get("id");
+        
+        User user = userService.findByEmail(email)
+            .map(existingUser -> {
+                existingUser.updateOAuth2Info(AuthProvider.NAVER, providerId);
+                return existingUser;
+            })
+            .orElseGet(() -> User.builder()
+                .email(email)
+                .name(name)
+                .imageUrl(imageUrl)
+                .provider(AuthProvider.NAVER)
+                .providerId(providerId)
+                .build());
+        
+        User savedUser = userService.saveUser(user);
+        log.info("Saved User: {}", savedUser);
+    }
+
+    private void handleGoogleUser(Map<String, Object> attributes) {
+        String email = (String) attributes.get("email");
+        String name = (String) attributes.get("name");
+        String imageUrl = (String) attributes.get("picture");
+        String providerId = (String) attributes.get("sub");
+        
+        User user = userService.findByEmail(email)
+            .map(existingUser -> {
+                existingUser.updateOAuth2Info(AuthProvider.GOOGLE, providerId);
+                return existingUser;
+            })
+            .orElseGet(() -> User.builder()
+                .email(email)
+                .name(name)
+                .imageUrl(imageUrl)
+                .provider(AuthProvider.GOOGLE)
                 .providerId(providerId)
                 .build());
         
