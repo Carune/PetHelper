@@ -23,7 +23,7 @@ public class UserService {
         // OAuth2User에서 필요한 정보 추출
         Map<String, Object> attributes = oAuth2User.getAttributes();
         
-        // 제공자별로 다른 처리 (예: 카카오)
+        // 제공자별로 다른 처리
         if (attributes.containsKey("kakao_account")) {
             Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
             String email = (String) kakaoAccount.get("email");
@@ -59,5 +59,13 @@ public class UserService {
     
     public User saveUser(User user) {
         return userRepository.save(user);
+    }
+
+    public void updateRefreshToken(String email, String refreshToken) {
+        userRepository.findByEmail(email)
+            .ifPresent(user -> {
+                user.updateRefreshToken(refreshToken);
+                userRepository.save(user);
+            });
     }
 } 

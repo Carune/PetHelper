@@ -43,6 +43,9 @@ public class User {
     @LastModifiedDate
     private LocalDateTime updatedAt;
     
+    @Column(length = 500)
+    private String refreshToken;
+    
     @Builder
     public User(String email, String password, String name, String imageUrl, 
                AuthProvider provider, String providerId) {
@@ -64,5 +67,9 @@ public class User {
     public void updateOAuth2Info(AuthProvider provider, String providerId) {
         this.provider = provider;
         this.providerId = providerId;
+    }
+    
+    public void updateRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 } 

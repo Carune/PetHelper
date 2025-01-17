@@ -50,17 +50,23 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             handleGoogleUser(attributes);
         }
 
-        String token = tokenService.createToken(authentication);
+        String accessToken = tokenService.createAccessToken(authentication);
+        String refreshToken = tokenService.createRefreshToken(authentication);
         String provider = "";
-        if (attributes.get("kakao_account") instanceof Map) {
-            provider = "kakao";
-        } else if (attributes.get("response") instanceof Map) {
-            provider = "naver";
-        } else if (attributes.containsKey("sub")) {
-            provider = "google";
-        }
-        String targetUrl = frontendUrl + "/oauth2/redirect?token=" + token + "&provider=" + provider;
         
+        // Refresh Token을 DB에 저장
+        String email = authentication.getName();
+        userService.updateRefreshToken(email, refreshToken);
+
+        String targetUrl = frontendUrl + "/oauth2/redirect?" +
+            "accessToken=" + accessToken +
+            "&refreshToken=" + refreshToken +
+            "&provider=" + provider;
+        
+        if (provider.equals("google")) {
+            targetUrl += "&google_email=" + email;
+        }
+
         clearAuthenticationAttributes(request);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }

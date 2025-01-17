@@ -8,10 +8,23 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
   profiles:
-    active: security,database
+    active:
+      - security
+      - database
 app:
     frontend:
       url: http://localhost:5173
+    api:
+      url: http://localhost:8080
+    cors:
+      allowed-origins:
+        - http://localhost:5173
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
 
 logging:
   level:

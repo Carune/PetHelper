@@ -18,12 +18,23 @@ public class TokenService {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Value("${jwt.token-validity-in-seconds}")
-    private long tokenValidityInSeconds;
+    @Value("${jwt.access-token-validity-in-seconds}")
+    private long accessTokenValidityInSeconds;
 
-    public String createToken(Authentication authentication) {
+    @Value("${jwt.refresh-token-validity-in-seconds}")
+    private long refreshTokenValidityInSeconds;
+
+    public String createAccessToken(Authentication authentication) {
+        return createToken(authentication, accessTokenValidityInSeconds);
+    }
+
+    public String createRefreshToken(Authentication authentication) {
+        return createToken(authentication, refreshTokenValidityInSeconds);
+    }
+
+    String createToken(Authentication authentication, long validityInSeconds) {
         Date now = new Date();
-        Date validity = new Date(now.getTime() + tokenValidityInSeconds * 1000);
+        Date validity = new Date(now.getTime() + validityInSeconds * 1000);
 
         return Jwts.builder()
                 .setSubject(authentication.getName())
@@ -31,6 +42,27 @@ public class TokenService {
                 .setExpiration(validity)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
+    }
+
+    public String getUserEmailFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private Key getSigningKey() {

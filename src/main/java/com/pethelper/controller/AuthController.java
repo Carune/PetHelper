@@ -4,6 +4,9 @@ import com.pethelper.dto.LoginRequest;
 import com.pethelper.dto.SignUpRequest;
 import com.pethelper.service.AuthService;
 import com.pethelper.service.TokenBlacklistService;
+import com.pethelper.service.TokenService;
+import com.pethelper.entity.User;
+import com.pethelper.repository.UserRepository;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,23 +14,19 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.Collections;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 @RestController
 @RequestMapping("/auth")
@@ -36,9 +35,11 @@ public class AuthController {
 
     private final AuthService authService;
 
-    private final AuthenticationSuccessHandler successHandler;
-
     private final TokenBlacklistService tokenBlacklistService;
+
+    private final TokenService tokenService;
+
+    private final UserRepository userRepository;
 
     @Value("${oauth2.logout.google.url}")
     private String googleLogoutUrl;
@@ -61,34 +62,6 @@ public class AuthController {
     @Value("${spring.security.oauth2.client.registration.naver.client-secret}")
     private String naverClientSecret;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-
-    @GetMapping("/login/oauth2/code/kakao")
-    public void handleKakaoRedirect(HttpServletRequest request, HttpServletResponse response, 
-                                  @RequestParam("code") String code, 
-                                  Authentication authentication) throws Exception {
-        // 인증 성공 후 홈으로 리다이렉트
-        successHandler.onAuthenticationSuccess(request, response, authentication);
-    }
-
-    @GetMapping("/login/oauth2/code/google")
-    public void handleGoogleRedirect(HttpServletRequest request, HttpServletResponse response, 
-                                      @RequestParam("code") String code, 
-                                      @RequestParam("state") String state, 
-                                      Authentication authentication) throws Exception {
-        // 인증 성공 후 홈으로 리다이렉트
-        successHandler.onAuthenticationSuccess(request, response, authentication);
-    }
-
-    @GetMapping("/login/oauth2/code/naver")
-    public void handleNaverRedirect(HttpServletRequest request, HttpServletResponse response, 
-                                      @RequestParam("code") String code, 
-                                      @RequestParam("state") String state, 
-                                      Authentication authentication) throws Exception {
-        // 인증 성공 후 홈으로 리다이렉트
-        successHandler.onAuthenticationSuccess(request, response, authentication);
-    }
-
     @PostMapping("/signup")
     public ResponseEntity<?> signUp(@Valid @RequestBody SignUpRequest request) {
         return authService.signUp(request);
@@ -99,13 +72,12 @@ public class AuthController {
         return authService.login(request);
     }
 
-    @SuppressWarnings("null")
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
         String token = request.getHeader("Authorization");
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
-            tokenBlacklistService.addToBlacklist(token);
+            tokenBlacklistService.addToBlacklist(token, 86400000L); // 24시간
         }
 
         new SecurityContextLogoutHandler().logout(request, response, null);
@@ -113,53 +85,15 @@ public class AuthController {
         String provider = request.getParameter("provider");
         
         if ("kakao".equals(provider)) {
-            try {
-                // 카카오 로그아웃 API 호출 (토큰 만료)
-                String kakaoLogout = "https://kapi.kakao.com/v1/user/logout";
-                HttpHeaders headers = new HttpHeaders();
-                headers.setBearerAuth(token);
-                HttpEntity<?> entity = new HttpEntity<>(headers);
-                
-                // 먼저 토큰을 만료시킴
-                restTemplate.exchange(
-                    kakaoLogout,
-                    HttpMethod.POST,
-                    entity,
-                    String.class
-                );
-
-                // 그 다음 로그아웃 페이지로 리다이렉트
-                String kakaoLogoutRedirect = kakaoLogoutUrl + 
-                    "?client_id=" + kakaoClientId + 
-                    "&logout_redirect_uri=" + logoutRedirectUri;
-                
-                return ResponseEntity.ok().body(Map.of("logoutUrl", kakaoLogoutRedirect));
-            } catch (HttpClientErrorException e) {
-                return ResponseEntity.ok().body(Map.of("logoutUrl", logoutRedirectUri));
-            }
+            // 카카오 로그아웃 페이지로 리다이렉트
+            String kakaoLogoutUrl = "https://kauth.kakao.com/oauth/logout" + 
+                "?client_id=" + kakaoClientId + 
+                "&logout_redirect_uri=" + logoutRedirectUri;
+            
+            return ResponseEntity.ok().body(Map.of("logoutUrl", kakaoLogoutUrl));
         } else if ("naver".equals(provider)) {
-            try {
-                // 네이버 토큰 삭제 API 호출
-                String naverTokenDeleteUrl = naverLogoutUrl +
-                    "?grant_type=delete" +
-                    "&client_id=" + naverClientId +
-                    "&client_secret=" + naverClientSecret +
-                    "&access_token=" + token +
-                    "&service_provider=NAVER";
-
-                HttpHeaders headers = new HttpHeaders();
-                HttpEntity<?> entity = new HttpEntity<>(headers);
-                
-                restTemplate.exchange(
-                    naverTokenDeleteUrl,
-                    HttpMethod.GET,
-                    entity,
-                    String.class
-                );
-            } catch (HttpClientErrorException e) {
-                // 에러가 발생해도 계속 진행
-            }
-            return ResponseEntity.ok().body(Map.of("logoutUrl", logoutRedirectUri));
+            // 네이버 로그아웃 URL로 리다이렉트
+            return ResponseEntity.ok().body(Map.of("logoutUrl", "https://nid.naver.com/nidlogin.logout"));
         }
 
         String logoutUrl = getOAuthLogoutUrl(provider);
@@ -178,5 +112,34 @@ public class AuthController {
             default:
                 return null;
         }
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String refreshToken) {
+        if (refreshToken != null && refreshToken.startsWith("Bearer ")) {
+            refreshToken = refreshToken.substring(7);
+        }
+
+        // Refresh Token 검증
+        if (!tokenService.validateToken(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // 사용자 이메일 추출
+        String email = tokenService.getUserEmailFromToken(refreshToken);
+        
+        // DB에 저장된 Refresh Token과 비교
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+            
+        if (refreshToken == null || !refreshToken.equals(user.getRefreshToken())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // 새로운 Access Token 발급
+        Authentication authentication = new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
+        String newAccessToken = tokenService.createAccessToken(authentication);
+
+        return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }
 } 

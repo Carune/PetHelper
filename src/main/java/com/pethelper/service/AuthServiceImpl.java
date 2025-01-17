@@ -52,7 +52,7 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
         
         // 인증 정보를 기반으로 JWT 토큰 생성
-        String token = tokenService.createToken(authentication);
+        String token = tokenService.createAccessToken(authentication);
         
         return ResponseEntity.ok()
                 .header("Authorization", "Bearer " + token)
